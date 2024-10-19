@@ -1110,7 +1110,7 @@ class AboutWindow(QtWidgets.QWidget):
         <b>Original App Contributors:</b> <a href="https://github.com/Disneyhockey40">Disneyhockey40 (Soszust40)</a><br/><br/>
         </p>
         <p style='text-align: center;'>
-        <b>Version:</b> Open1.0
+        <b>Version:</b> v2.0.0 - OpenAI Edition
         </p>
         """
 
