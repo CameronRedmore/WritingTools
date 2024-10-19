@@ -8,7 +8,7 @@ import time
 import webbrowser
 
 import darkdetect
-import google.generativeai as genai
+from openai import OpenAI
 import keyboard
 import pyperclip
 import win32clipboard
@@ -433,7 +433,7 @@ class WritingToolApp(QtWidgets.QApplication):
         keyboard.press_and_release('ctrl+c')
 
         # Wait for the clipboard to update
-        time.sleep(0.1)
+        time.sleep(0.5)
 
         # Get the selected text
         selected_text = pyperclip.paste()
@@ -507,43 +507,30 @@ class WritingToolApp(QtWidgets.QApplication):
         'You are a writing assistant. You MUST make the user\'s described change to the text provided by the user. Output ONLY the appropriately modified text without additional comments. Respond in the same language as the input (e.g., English US, French). If the text is completely incompatible with the requested change, output "ERROR_TEXT_INCOMPATIBLE_WITH_REQUEST".'
     )
 }
+
             prompt_prefix, system_instruction = option_prompts.get(option, ('', ''))
             if option == 'Custom':
                 prompt = f"{prompt_prefix}Described change: {custom_change}\n\nText: {selected_text}"
             else:
                 prompt = f"{prompt_prefix}{selected_text}"
 
-            genai.configure(api_key=self.config['api_key'])
-            logging.debug('Configured genai with API key')
-
-            model = genai.GenerativeModel(
-                model_name='gemini-1.5-flash-latest',
-                generation_config=genai.types.GenerationConfig(
-                    candidate_count=1,
-                    max_output_tokens=1000,
-                    temperature=0.5
-                ),
-                safety_settings={
-                    HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
-                    HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
-                    HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
-                    HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
-                }
+            client = OpenAI(
+                api_key=self.config['api_key'],
+                base_url=self.config['api_base'],
+                organization=self.config['api_organisation']
             )
-            logging.debug('Created generative model')
 
-            response = model.generate_content(
-                contents=[system_instruction, prompt],
+            response = client.chat.completions.create(
+                model=self.config['api_model'],
+                messages=[
+                    {"role": "system", "content": system_instruction},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.5
             )
-            logging.debug('Received response from model')
 
-            # Check if the response was blocked
-            if response.prompt_feedback.block_reason:
-                logging.warning('Response was blocked due to safety settings')
-                self.show_message_signal.emit('Content Blocked', 'The generated content was blocked due to safety settings.')
-                return
+            output_text = response.choices[0].message.content.strip()
 
-            output_text = response.text.strip()
             logging.debug(f'Output text: {output_text}')
 
             if output_text == "ERROR_TEXT_INCOMPATIBLE_WITH_REQUEST":
@@ -678,7 +665,7 @@ class OnboardingWindow(QtWidgets.QWidget):
     def init_ui(self):
         logging.debug('Initializing onboarding UI')
         self.setWindowTitle('Welcome to Writing Tools')
-        self.resize(500, 400)
+        self.resize(600, 500)
 
         # Set the window icon
         icon_path = os.path.join(os.path.dirname(sys.argv[0]), 'icons', 'app_icon.png')
@@ -709,9 +696,7 @@ class OnboardingWindow(QtWidgets.QWidget):
         features_text = """
         • Improves your writing with AI
         • Works in any application in just a click
-        • MUCH more intelligent model than Apple's Writing Tools :)
-        • Free and lightweight
-        • Values your privacy
+        • Usable with any OpenAI Compatible API
         """
         features_label = QtWidgets.QLabel(features_text)
         features_label.setStyleSheet(f"font-size: 16px; color: {'#ffffff' if colorMode == 'dark' else '#333333'};")
@@ -778,27 +763,14 @@ class OnboardingWindow(QtWidgets.QWidget):
         title_label.setStyleSheet(f"font-size: 24px; font-weight: bold; color: {'#ffffff' if colorMode == 'dark' else '#333333'};")
         self.content_layout.addWidget(title_label, alignment=QtCore.Qt.AlignmentFlag.AlignCenter)
 
-        instructions = QtWidgets.QLabel("Writing Tools needs a free Google Gemini API key to work.")
+        instructions = QtWidgets.QLabel("Writing Tools needs an OpenAI (or compatible) API configuration.")
         instructions.setStyleSheet(f"font-size: 16px; color: {'#ffffff' if colorMode == 'dark' else '#333333'};")
         instructions.setWordWrap(True)
         self.content_layout.addWidget(instructions)
 
-        get_api_key_button = QtWidgets.QPushButton("Get API Key")
-        get_api_key_button.setStyleSheet("""
-            QPushButton {
-                background-color: #008CBA;
-                color: white;
-                padding: 10px;
-                font-size: 16px;
-                border: none;
-                border-radius: 5px;
-            }
-            QPushButton:hover {
-                background-color: #007B9A;
-            }
-        """)
-        get_api_key_button.clicked.connect(lambda: webbrowser.open("https://aistudio.google.com/app/apikey"))
-        self.content_layout.addWidget(get_api_key_button)
+        api_key_label = QtWidgets.QLabel("OpenAI API Key:")
+        api_key_label.setStyleSheet(f"font-size: 16px; color: {'#ffffff' if colorMode == 'dark' else '#333333'};")
+        self.content_layout.addWidget(api_key_label)
 
         self.api_key_input = QtWidgets.QLineEdit()
         self.api_key_input.setStyleSheet(f"""
@@ -808,10 +780,55 @@ class OnboardingWindow(QtWidgets.QWidget):
             color: {'#ffffff' if colorMode == 'dark' else '#000000'};
             border: 1px solid {'#666' if colorMode == 'dark' else '#ccc'};
         """)
-        self.api_key_input.setPlaceholderText("Enter your API key here")
+        self.api_key_input.setPlaceholderText("OpenAI API Key")
         self.content_layout.addWidget(self.api_key_input)
 
-        privacy_info = QtWidgets.QLabel("Your API key grants access to use Google's AI models. \nWriting Tools stores it locally ONLY on your device. \nWhen you use Writing Tools, on your invocation, it's sent encrypted to Google — SOLELY to improve your text with Gemini 1.5 Flash.")
+        api_base_label = QtWidgets.QLabel("OpenAI API Base:")
+        api_base_label.setStyleSheet(f"font-size: 16px; color: {'#ffffff' if colorMode == 'dark' else '#333333'};")
+        self.content_layout.addWidget(api_base_label)
+
+        self.api_base_input = QtWidgets.QLineEdit()
+        self.api_base_input.setStyleSheet(f"""
+            font-size: 16px;
+            padding: 5px;
+            background-color: {'#444' if colorMode == 'dark' else 'white'};
+            color: {'#ffffff' if colorMode == 'dark' else '#000000'};
+            border: 1px solid {'#666' if colorMode == 'dark' else '#ccc'};
+        """)
+        self.api_base_input.setPlaceholderText("Eg. https://api.openai.com/v1/")
+        self.content_layout.addWidget(self.api_base_input)
+
+        api_organisation_label = QtWidgets.QLabel("OpenAI Organisation:")
+        api_organisation_label.setStyleSheet(f"font-size: 16px; color: {'#ffffff' if colorMode == 'dark' else '#333333'};")
+        self.content_layout.addWidget(api_organisation_label)
+
+        self.api_organisation_input = QtWidgets.QLineEdit()
+        self.api_organisation_input.setStyleSheet(f"""
+            font-size: 16px;
+            padding: 5px;
+            background-color: {'#444' if colorMode == 'dark' else 'white'};
+            color: {'#ffffff' if colorMode == 'dark' else '#000000'};
+            border: 1px solid {'#666' if colorMode == 'dark' else '#ccc'};
+        """)
+        self.api_organisation_input.setPlaceholderText("My Organisation [Leave blank if N/A]")
+        self.content_layout.addWidget(self.api_organisation_input)
+
+        api_model_label = QtWidgets.QLabel("API Model:")
+        api_model_label.setStyleSheet(f"font-size: 16px; color: {'#ffffff' if colorMode == 'dark' else '#333333'};")
+        self.content_layout.addWidget(api_model_label)
+
+        self.api_model_input = QtWidgets.QLineEdit('gpt-4o-mini')
+        self.api_model_input.setStyleSheet(f"""
+            font-size: 16px;
+            padding: 5px;
+            background-color: {'#444' if colorMode == 'dark' else 'white'};
+            color: {'#ffffff' if colorMode == 'dark' else '#000000'};
+            border: 1px solid {'#666' if colorMode == 'dark' else '#ccc'};
+        """)
+        self.api_model_input.setPlaceholderText("API Model (eg. gpt-4o-mini)")
+        self.content_layout.addWidget(self.api_model_input)
+
+        privacy_info = QtWidgets.QLabel("Writing Tools stores your key on your device. However, when you use this tool, by its nature, the API key and the text you have entered will be transmitted to the URL endpoint you provide, this means your data will be handled as per the privacy policy and terms of service of the endpoint you provide.")
         privacy_info.setStyleSheet(f"font-size: 14px; color: {'#cccccc' if colorMode == 'dark' else '#555555'};")
         privacy_info.setWordWrap(True)
         self.content_layout.addWidget(privacy_info)
@@ -842,15 +859,25 @@ class OnboardingWindow(QtWidgets.QWidget):
                 self.clear_layout(child.layout())
 
     def on_finish_clicked(self):
-        self.api_key = self.api_key_input.text()
-        logging.debug('User entered API key')
+        """
+        Save the current settings.
+        """
+        new_api_key = self.api_key_input.text()
+        new_api_base = self.api_base_input.text()
+        new_api_organisation = self.api_organisation_input.text()
+        new_api_model = self.api_model_input.text()
         self.app.save_config({
             'shortcut': self.shortcut,
-            'api_key': self.api_key,
-            'theme': self.theme
+            'theme': self.theme,
+            'api_key': new_api_key,
+            'api_base': new_api_base,
+            'api_organisation': new_api_organisation,
+            'api_model': new_api_model
         })
+        self.app.register_hotkey()
         self.onboarding_completed = True
         self.close()
+
 
     def closeEvent(self, event):
         if not self.onboarding_completed:
@@ -909,7 +936,7 @@ class SettingsWindow(QtWidgets.QWidget):
         """)
         content_layout.addWidget(self.shortcut_input)
 
-        api_key_label = QtWidgets.QLabel("API Key:")
+        api_key_label = QtWidgets.QLabel("OpenAI API Key:")
         api_key_label.setStyleSheet(f"font-size: 16px; color: {'#ffffff' if colorMode == 'dark' else '#333333'};")
         content_layout.addWidget(api_key_label)
 
@@ -922,6 +949,49 @@ class SettingsWindow(QtWidgets.QWidget):
             border: 1px solid {'#666' if colorMode == 'dark' else '#ccc'};
         """)
         content_layout.addWidget(self.api_key_input)
+
+        api_base_label = QtWidgets.QLabel("OpenAI API Base:")
+        api_base_label.setStyleSheet(f"font-size: 16px; color: {'#ffffff' if colorMode == 'dark' else '#333333'};")
+        content_layout.addWidget(api_base_label)
+
+        self.api_base_input = QtWidgets.QLineEdit(self.app.config.get('api_base', ''))
+        self.api_base_input.setStyleSheet(f"""
+            font-size: 16px;
+            padding: 5px;
+            background-color: {'#444' if colorMode == 'dark' else 'white'};
+            color: {'#ffffff' if colorMode == 'dark' else '#000000'};
+            border: 1px solid {'#666' if colorMode == 'dark' else '#ccc'};
+        """)
+        content_layout.addWidget(self.api_base_input)
+
+        api_organisation_label = QtWidgets.QLabel("OpenAI Organisation:")
+        api_organisation_label.setStyleSheet(f"font-size: 16px; color: {'#ffffff' if colorMode == 'dark' else '#333333'};")
+        content_layout.addWidget(api_organisation_label)
+
+        self.api_organisation_input = QtWidgets.QLineEdit(self.app.config.get('api_organisation', ''))
+        self.api_organisation_input.setStyleSheet(f"""
+            font-size: 16px;
+            padding: 5px;
+            background-color: {'#444' if colorMode == 'dark' else 'white'};
+            color: {'#ffffff' if colorMode == 'dark' else '#000000'};
+            border: 1px solid {'#666' if colorMode == 'dark' else '#ccc'};
+        """)
+        content_layout.addWidget(self.api_organisation_input)
+
+        api_model_label = QtWidgets.QLabel("API Model:")
+        api_model_label.setStyleSheet(f"font-size: 16px; color: {'#ffffff' if colorMode == 'dark' else '#333333'};")
+        content_layout.addWidget(api_model_label)
+
+        self.api_model_input = QtWidgets.QLineEdit('gpt-4o-mini')
+        self.api_model_input.setStyleSheet(f"""
+            font-size: 16px;
+            padding: 5px;
+            background-color: {'#444' if colorMode == 'dark' else 'white'};
+            color: {'#ffffff' if colorMode == 'dark' else '#000000'};
+            border: 1px solid {'#666' if colorMode == 'dark' else '#ccc'};
+        """)
+        self.api_model_input.setPlaceholderText("API Model (eg. gpt-4o-mini)")
+        content_layout.addWidget(self.api_model_input)
 
         theme_label = QtWidgets.QLabel("Theme:")
         theme_label.setStyleSheet(f"font-size: 16px; color: {'#ffffff' if colorMode == 'dark' else '#333333'};")
@@ -973,11 +1043,17 @@ class SettingsWindow(QtWidgets.QWidget):
         """
         new_shortcut = self.shortcut_input.text()
         new_api_key = self.api_key_input.text()
+        new_api_base = self.api_base_input.text()
+        new_api_organisation = self.api_organisation_input.text()
         new_theme = 'gradient' if self.gradient_radio.isChecked() else 'plain'
+        new_api_model = self.api_model_input.text()
         self.app.save_config({
             'shortcut': new_shortcut,
             'api_key': new_api_key,
-            'theme': new_theme
+            'api_base': new_api_base,
+            'api_organisation': new_api_organisation,
+            'theme': new_theme,
+            'api_model': new_api_model
         })
         self.app.register_hotkey()
         self.close()
@@ -1025,22 +1101,16 @@ class AboutWindow(QtWidgets.QWidget):
 
         about_text = """
         <p style='text-align: center;'>
-        <b>Writing Tools</b> is a free and lightweight application that helps you improve your writing with AI, similar to Apple's new Apple Intelligence feature.<br><br>
-        It's completely free for you to use as you provide your own free Gemini API key.<br><br>
-        The AI model used here, Gemini 1.5 Flash, offers significantly better performance than Apple's on-device model, resulting in more natural and less robotic text refinements.<br><br><br>
+        <b>Writing Tools</b> is a free and lightweight application that helps you improve your writing with AI, similar to Apple's new Apple Intelligence feature.<br/><br/>
+        This is a modified version of the original <a href="https://github.com/theJayTea/WritingTools">Writing Tools</a> application which uses OpenAI (or compatible) providers to improve your writing.<br/><br/><br/>
         </p>
         <p style='text-align: center;'>
-        <b>Made with love by Jesai, a high school student.</b><br><br>
-        Feel free to check out my other AI app, <a href="https://play.google.com/store/apps/details?id=com.jesai.blissai">Bliss AI</a>. It's a novel AI tutor that's free on the Google Play Store :)<br><br>
+        <b>Modified for OpenAI Support by <a href="https://github.com/CameronRedmore">Cameron Redmore</a>.</b><br/><br/>
+        <b>Originally by <a href="https://github.com/theJayTea">Jesai</a>.</b><br/><br/>
+        <b>Original App Contributors:</b> <a href="https://github.com/Disneyhockey40">Disneyhockey40 (Soszust40)</a><br/><br/>
         </p>
         <p style='text-align: center;'>
-        <b>Contributors:</b> <a href="https://github.com/Disneyhockey40">Disneyhockey40 (Soszust40)</a><br><br>
-        </p>
-        <p style='text-align: center;'>
-        <b>Contact me:</b> jesaitarun@gmail.com<br><br>
-        </p>
-        <p style='text-align: center;'>
-        <b>Version:</b> 2.0 (Codename: Enhanced_Elegance)
+        <b>Version:</b> Open1.0
         </p>
         """
 
@@ -1069,11 +1139,35 @@ class AboutWindow(QtWidgets.QWidget):
         update_button.clicked.connect(self.check_for_updates)
         content_layout.addWidget(update_button)
 
+        # Add "Original App" button
+        original_app_button = QtWidgets.QPushButton('Original App')
+        original_app_button.setStyleSheet("""
+            QPushButton {
+                background-color: #4c5baf;
+                color: white;
+                padding: 10px;
+                font-size: 16px;
+                border: none;
+                border-radius: 5px;
+            }
+            QPushButton:hover {
+                background-color: #35407c;
+            }
+        """)
+        original_app_button.clicked.connect(self.original_app())
+        content_layout.addWidget(original_app_button)
+
     def check_for_updates(self):
         """
         Open the GitHub releases page to check for updates.
         """
-        webbrowser.open("https://github.com/theJayTea/WritingTools/releases")
+        webbrowser.open("https://github.com/CameronRedmore/WritingTools/releases")
+
+    def original_app(self):
+        """
+        Open the original app GitHub page.
+        """
+        webbrowser.open("https://github.com/TheJayTea/WritingTools")
 
 def main():
     """

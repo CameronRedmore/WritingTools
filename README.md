@@ -1,22 +1,27 @@
-# Writing Tools
+# Writing Tools - OpenAI Edition
 
 https://github.com/user-attachments/assets/0dd14cee-8307-4714-99f0-631fb6de1510
 
-## 🚀 What is Writing Tools?
+## 🚀 What is Writing Tools - OpenAI Edition?
 
-Writing Tools is an Apple Intelligence-inspired application for Windows that supercharges your writing with AI. It lets you fix up grammar and more with one  hotkey press, system-wide. It's currently the world's most intelligent system-wide grammar assistant.
+This is a modified version of the original [Writing Tools](https://www.github.com/theJayTea/WritingTools), which swaps out the Gemini 1.5 Flash model for OpenAI compatible inference instead.
 
-### 🌟 Why Choose Writing Tools?
+Writing Tools is a powerful text editing tool that uses Google's Gemini 1.5 Flash model to provide a variety of text editing options, such as proofreading, rewriting, summarizing, and more. 
 
-Aside from being the only Windows program that works like Apple's Writing Tools:
+### 🌟 Why Choose Writing Tools in general?
 
-- **Smarter AI**: Powered by Google's Gemini 1.5 Flash model, a >10x larger & more intelligent model than Apple Intelligence!
 - **System-wide Functionality**: Works instantly in any application where you can select text. Does not overwrite or mess with your clipboard.
-- **Completely free and Open-source**: No subscriptions, no hidden costs. Bloat-free & uses pretty much 0% of your CPU.
-- **Privacy-focused**: Your API key and config files stay on *your* device. NO logging, diagnostic collection, tracking, or ads. Invoked *only* on your command.
-- 🆕 **Supports Many Languages**: Works for any language! It can even *translate* text across many languages better than Google Translate (type *"translate to x language"* in the `Describe your change...` box).
-- 🆕 **Themes & Dark Mode**: Choose between **2 themes**: a blurry gradient theme and a plain theme that resembles the Windows + V pop-up! Also has full **dark mode support**.
+- **Privacy-focused**: Your API key and config files stay on *your* device. NO logging, diagnostic collection, tracking, or ads are added by the project itself. The application is also invoked *only* on your command.  however due to the nature of sending data to a third party API, these third-party APIs can perform tracking etc. as they wish. (Use local inference via the OpenAI compatible version for enhanced privacy).
+- **Supports Many Languages**: Works for any language the model-behind can handle! It can even *translate* text across many languages better than Google Translate (type *"translate to x language"* in the `Describe your change...` box).
+- **Themes & Dark Mode**: Choose between **2 themes**: a blurry gradient theme and a plain theme that resembles the Windows + V pop-up! Also has full **dark mode support**.
 - **Customizable**: Set your own hotkey for quick access.
+
+### 🌟 Why Choose Writing Tools - OpenAI Edition?
+
+- **OpenAI Compatibility**: Works with any OpenAI compatible endpoint, allowing local or cloud-based inference.
+- **Local Inference for Enhanced Privacy**: Run models locally to ensure absolutely no data leaves your device at all, avoiding pesky third-party privacy policies and terms of use with tools such as [TabbyAPI](https://github.com/theroyallab/tabbyAPI), [vLLM](https://github.com/vllm-project/vllm), [llama.cpp](https://github.com/ggerganov/llama.cpp/blob/master/examples/server/README.md) or [KoboldCPP](https://github.com/LostRuins/koboldcpp), along with many others.
+- **Best-in-Class Cloud Inference**: [OpenAI](https://www.openai.com)'s cloud-based models are some of the best in the world, and this version of Writing Tools allows you to use them with ease.
+- **More Options**: Many providers offer OpenAI compatibility, allowing you to choose the best provider for your needs. Examples include [Anthropic](https://www.anthropic.com/), [MistralAI](https://mistral.ai/), and even [Google Gemini itself](https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/call-vertex-using-openai-library), again with many other options not listed here too.
 
 ## ✨ Features
 
@@ -47,11 +52,12 @@ Aside from being the only Windows program that works like Apple's Writing Tools:
 
 ## 🔒 Privacy
 
-I believe strongly in protecting your privacy. Writing Tools:
-- Only stores your API key locally on your device.
-- Does not collect or store any of your writing data by itself. It doesn't even collect general logs, so it's super light and privacy-friendly.
-- Only sends text to Google (encrypted) when you *explicitly* use one of the options. If you have a paid API key, the text will never be used to train Gemini, but if you don't, Google may anonymise your text and use it to train their models.
-- You can explore the source code yourself, and even compile it yourself :D
+As with the original Writing Tools, this version does not itself collect any data. However, just like the original Writing Tools, the third-party APIs it uses may collect data according to their own privacy policies.
+
+To ensure no data ever leaves your device at all, use Local Inference with OpenAI compatible servers as described above!
+
+This version of Writing Tools is also Open-Source, licensed under the same GNU General Public License v3.0 as the original Writing Tools.
+This allows for perusal, modification, and distribution of the code, ensuring transparency and privacy.
 
 ## 💡 Tips
 
