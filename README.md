@@ -42,7 +42,7 @@ Writing Tools is a powerful text editing tool that uses Google's Gemini 1.5 Flas
 
 ## 🛠 Installation
 
-1. Go to the [Releases](https://github.com/theJayTea/WritingTools/releases) page and download the latest `Writing Tools.zip` file.
+1. Go to the [Releases](https://github.com/CameronRedmore/WritingTools/releases) page and download the latest `Writing Tools.zip` file.
    
 2. Extract it where you want, run `Writing Tools.exe`, and enjoy! :D
 
