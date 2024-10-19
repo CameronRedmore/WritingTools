@@ -982,7 +982,7 @@ class SettingsWindow(QtWidgets.QWidget):
         api_model_label.setStyleSheet(f"font-size: 16px; color: {'#ffffff' if colorMode == 'dark' else '#333333'};")
         content_layout.addWidget(api_model_label)
 
-        self.api_model_input = QtWidgets.QLineEdit('gpt-4o-mini')
+        self.api_model_input = QtWidgets.QLineEdit(self.app.config['api_model'])
         self.api_model_input.setStyleSheet(f"""
             font-size: 16px;
             padding: 5px;
@@ -1110,7 +1110,7 @@ class AboutWindow(QtWidgets.QWidget):
         <b>Original App Contributors:</b> <a href="https://github.com/Disneyhockey40">Disneyhockey40 (Soszust40)</a><br/><br/>
         </p>
         <p style='text-align: center;'>
-        <b>Version:</b> v2.0.0 - OpenAI Edition
+        <b>Version:</b> v2.0.0a - OpenAI Edition
         </p>
         """
 
